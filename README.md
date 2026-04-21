@@ -1,80 +1,67 @@
-# 🤖 AI Use Case Automation Platform
+# 🤖 RAG Use Case Generator
+
+A local, file-based Retrieval-Augmented Generation (RAG) system that transforms product documentation (PDFs, Word Docs, Images, Text) into structured, high-quality software use cases.
+
+Built with **LangChain**, **Streamlit**, **ChromaDB**, and **Groq**.
 
 ---
 
-## 📌  Overview  
+## 🚀 Quick Start
 
-AI Use Case Automation Platformis an AI-powered product that converts unstructured product documentation (PDFs, Word files, images, and text) into structured, reliable software use cases.
+### 1. Prerequisites
+- **Python 3.10+**
+- **Tesseract OCR** (Required for processing images)
+  - Windows: [Download Installer](https://github.com/UB-Mannheim/tesseract/wiki) (Add to PATH)
+  - Mac: `brew install tesseract`
+  - Linux: `sudo apt install tesseract-ocr`
+- **Groq API Key**: [Get one here](https://console.groq.com/) (Free tier available)
 
-Instead of manually reading through long documents and extracting requirements, users can upload their files and instantly generate accurate flows, validations, and test scenarios grounded strictly in real content.
+### 2. Installation
+```bash
+# Clone the repo
+git clone <your-repo-url>
+cd Sujal_Rag
 
----
+# Install dependencies
+pip install -r requirements.txt
+```
 
-## 🎯 Problem Statement  
+### 3. Configuration
+Copy the example environment file:
+```bash
+cp .env.example .env
+```
+Open `.env` and add your API Key:
+```
+GROQ_API_KEY=gsk_your_key_here
+```
+*(Alternatively, you can skip this and enter the key in the UI sidebar)*
 
-Product and engineering teams often work with:
-
-- Scattered documentation across formats  
-- Unclear or incomplete requirements  
-- Manual effort to convert documents into usable use cases  
-
-Most AI tools generate generic outputs or hallucinate missing details.
-
-This leads to:
-
-❌ Incorrect requirements  
-❌ Time wasted on reviews  
-❌ Low trust in AI-generated outputs  
-
----
-
-## ✅ Solution  
-
-RAG Use Case Generator uses a context-grounded AI pipeline that:
-
-- Ingests multi-format documents  
-- Retrieves only relevant content for each query  
-- Generates structured outputs strictly based on evidence  
-
-This ensures:
-
-✔ Accurate use cases  
-✔ Zero hallucination  
-✔ Production-ready structured responses  
+### 4. Run the App
+```bash
+streamlit run src/app.py
+```
 
 ---
 
-## 👤 Target Users  
+## 🛠️ Usage
 
-- Product Managers  
-- QA Engineers  
-- Software Engineers  
-- Business Analysts  
+### Option A: Automatic Ingestion (Recommended)
+1. Place your project files (PDFs, screenshots, docx) in the `Dataset/` folder.
+2. In the App Sidebar, click **"📥 Ingest 'Dataset' Folder"**.
+3. Wait for the success message.
 
-Anyone working with product documentation and requirements.
+### Option B: Manual Upload
+1. Drag and drop files directly into the Sidebar upload area.
+2. Click **"Process Files"**.
 
----
+### Generative Query
+Ask questions like:
+> "Create use cases for user signup"
+> "Generate negative test cases for the login flow"
+> "What are the verification rules?"
 
-## 🔄 User Journey  
-
-1. Upload product documents (PDFs, Word files, images, text)  
-2. System processes content with text extraction and OCR  
-3. Data is indexed into a vector database  
-4. User asks for use cases, flows, or validations  
-5. Relevant context is retrieved via hybrid search  
-6. AI generates grounded structured outputs  
-7. Results appear in an interactive UI  
-
----
-
-## 🧠Highlights  
-
-- Multi-modal document ingestion  
-- Hybrid retrieval (semantic + keyword search) for high accuracy  
-- Context-grounded RAG pipeline to avoid hallucinations  
-- Guardrails for scope enforcement  
-- Structured JSON outputs  
-- Transparent debugging view for trust  
+The system will return a **Structured JSON** response grounded strictly in your documents.
 
 ---
 
@@ -94,8 +81,21 @@ graph LR
     C --> F
     D --> F
 ```
-### Context Grounding
 
+### 1. Ingestion (`src/ingestion.py`)
+- **Multi-modal Loading**:
+  - `docx`, `pdf`, `txt`, `md`: Native text extraction.
+  - `png`, `jpg`: OCR using `pytesseract`.
+- **Chunking**: Recursive character split (1000 chars, 200 overlap).
+- **Guardrails**:
+  - **Deduplication**: MD5 hashing prevents processing duplicate blocks.
+  - **Garbage Filter**: Removes low-quality or too-short OCR headers/footers.
+- **Vector Store**: `ChromaDB` (Local) with `HuggingFaceEmbeddings` (running on CPU).
+
+### 2. Retrieval (`src/retrieval.py`)
+- **Hybrid Search**: Combines **Vector Search** (Semantic) + **BM25** (Keyword).
+- **Ensemble**: Weights results 50/50 to ensure both conceptual and exact matches are found.
+- **Result**: Returns top-k relevant chunks with metadata (Source File, Page Number).
 
 ```mermaid
 flowchart TD
@@ -108,78 +108,57 @@ flowchart TD
     G -->|Valid Chunks| LLM[LLM Input]
 ```
 
+### 3. Generation (`src/generation.py`)
+- **Model**: `llama-3.3-70b-versatile` via Groq (Fast, high-performance).
+- **Strict Guardrails**:
+  - **Scope Enforcement**: Rejects queries unrelated to retrieved context.
+  - **Anti-Hallucination**: Returns `insufficient_context: true` and empty lists if evidence is missing.
+  - **Format**: JSON-only output (Pydantic enforced).
+- **Retry Mechanism**: Automatically fixes malformed JSON output by re-prompting the LLM.
 
-
-### Key Layers  
-
-**1. Ingestion Layer**  
-- Handles text documents and images  
-- Performs OCR where required  
-- Cleans and deduplicates content  
-
-**2. Retrieval Layer**  
-- Vector search for semantic relevance  
-- BM25 keyword search for exact matches  
-- Ensemble ranking for best context selection  
-
-**3. AI Generation Layer**  
-- LLM generates responses only from retrieved context  
-- Guardrails prevent out-of-scope answers  
-- Outputs structured JSON  
-
-**4. Product Interface**  
-- Upload and query through Streamlit UI  
-- Debug mode for transparency  
+### 4. UI (`src/app.py`)
+- **Streamlit**: Interactive frontend.
+- **Debug Mode**: Shows the exact text chunks used to generate the answer for transparency.
+- **Dynamic Config**: API Key input, retrieval depth slider.
 
 ---
 
-## 🧰 Tech Stack  
+## 🛡️ Safeguards & Protections
 
-- **Language:** Python  
-- **AI Frameworks:** LangChain  
-- **Vector Database:** ChromaDB  
-- **LLM Provider:** Groq (Llama models)  
-- **UI:** Streamlit  
-- **OCR:** Tesseract  
+1. **Hallucination Protection**: The system is prompted to *never* invent features. If docs are missing ("password rules"), it will explicitly state "Insufficient Context" rather than guessing "8 characters".
+2. **Prompt Injection Defense**: System ignores instructions found *inside* user documents (e.g., "Ignore previous rules").
+3. **Structured Output**: Uses Pydantic validation to ensure the output is always parseable JSON, never markdown or prose.
 
 ---
 
-## 🛡️ Reliability & Safety  
+## 💻 Tech Stack & Tools
 
-- Hallucination prevention through strict grounding  
-- Prompt injection defense  
-- Structured output validation  
-- Out-of-scope query rejection  
-
----
-
-## 🚀 Product Impact (Estimated)  
-
-- Reduced manual requirement analysis time by ~60–70%  
-- Improved accuracy of generated use cases  
-- Increased trust in AI-generated documentation  
+- **Language**: Python 3.12
+- **Frameworks**: LangChain, Streamlit
+- **Vector DB**: ChromaDB
+- **LLM Provider**: Groq
+- **OCR**: Tesseract
+- **IDEs**: VS Code
+- **Linter**: Standard Python best practices
 
 ---
 
-## 🔮 Future Improvements  
-
-- Collaboration features for teams  
-- Versioning of documents and use cases  
-- Export to Jira/TestRail formats  
-- Cloud-based scalable deployment  
-- Analytics on document usage  
-
----
-
-## 📎 GitHub  
-
-https://github.com/Sujal-py3/rag-context-grounded-engine  
-
----
-
-### ⭐ Quick Summary  
-
-An AI-powered RAG product that converts real-world documentation into accurate, structured software use cases using hybrid retrieval and strict context grounding.
+## 📂 Project Structure
+```
+/
+├── Dataset/            # Place your data here
+├── chroma_db/          # Local vector storage (auto-generated)
+├── src/
+│   ├── app.py          # Main UI
+│   ├── ingestion.py    # File usage & DB creation
+│   ├── retrieval.py    # Search logic
+│   ├── generation.py   # LLM interaction & Prompting
+│   └── utils.py        # Helpers
+├── requirements.txt    # Python deps
+├── README.md           # This file
+└── .env                # Config
+```
 
 ---
 
+*Verified for robustness against generic test case hallucination.*
