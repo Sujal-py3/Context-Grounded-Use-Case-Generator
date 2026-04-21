@@ -1,5 +1,3 @@
-# 🤖 RAG Use Case Generator
-
 A local, file-based Retrieval-Augmented Generation (RAG) system that transforms product documentation (PDFs, Word Docs, Images, Text) into structured, high-quality software use cases.
 
 Built with **LangChain**, **Streamlit**, **ChromaDB**, and **Groq**.
